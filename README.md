@@ -15,6 +15,13 @@ DATABASE_SSL=true
 PORT=3000
 SYNC_INTERVAL_SECONDS=30
 AUTO_PAY_WITHDRAWALS=true
+MIN_BET=10
+MAX_BET=10000
+MIN_DEPOSIT=1000
+MAX_DEPOSIT=1000000
+DAILY_WITHDRAWAL_LIMIT=1000000
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX=120
 ```
 
 Sonra çalıştır:
@@ -40,7 +47,7 @@ http://localhost:3000
 3. Render'da bu GitHub reposundan yeni Web Service oluştur.
 4. Build command: `npm install`
 5. Start command: `npm start`
-6. Environment değişkenleri: `BOT_TOKEN`, `DIPLOMACIA_TOKEN`, `ADMIN_KEY`, `DATABASE_URL`, `DATABASE_SSL`, `SYNC_INTERVAL_SECONDS`, `AUTO_PAY_WITHDRAWALS`.
+6. Environment değişkenleri: `BOT_TOKEN`, `DIPLOMACIA_TOKEN`, `ADMIN_KEY`, `DATABASE_URL`, `DATABASE_SSL`, `SYNC_INTERVAL_SECONDS`, `AUTO_PAY_WITHDRAWALS`, limit ayarları.
 7. Render'ın verdiği HTTPS adresini BotFather Mini App URL alanına gir.
 
 İlk çalıştırmada sunucu `app_state` tablosunu otomatik oluşturur. Eğer deploy sırasında mevcut `data/db.json` dosyası varsa ilk kayıt olarak Postgres'e aktarılır.
@@ -98,13 +105,29 @@ Admin paneli canlı adreste `/admin.html` yolundadır:
 https://thequeen-casino.onrender.com/admin.html
 ```
 
-Panel açılınca `.env` veya Render environment içinde tanımladığın `ADMIN_KEY` değerini gir. Panelde oyuncular, toplam bakiyeler, yatırımlar, çekimler, bekleyen çekimler ve son chat mesajları görüntülenir.
+Panel açılınca `.env` veya Render environment içinde tanımladığın `ADMIN_KEY` değerini gir. Panelde oyuncular, toplam bakiyeler, yatırımlar, çekimler, bekleyen çekimler, son oyunlar ve son chat mesajları görüntülenir.
 
 Admin özet API'si:
 
 ```bash
 curl http://localhost:3000/api/admin/summary -H "x-admin-key: ADMIN_KEY_BURAYA"
 ```
+
+## Limitler ve Güvenlik
+
+Bahis, yatırım, çekim ve rate limit değerleri environment üzerinden yönetilir:
+
+```env
+MIN_BET=10
+MAX_BET=10000
+MIN_DEPOSIT=1000
+MAX_DEPOSIT=1000000
+DAILY_WITHDRAWAL_LIMIT=1000000
+RATE_LIMIT_WINDOW_MS=60000
+RATE_LIMIT_MAX=120
+```
+
+Sunucu her oyun sonucunu `gameLogs` içine kaydeder. Admin panelindeki `Son Oyunlar` bölümü son 100 kaydı gösterir, veritabanında en fazla son 1000 oyun kaydı tutulur.
 
 ## Önemli
 

@@ -8,6 +8,7 @@ const pendingWithdrawalsEl = document.querySelector("#pendingWithdrawals");
 const depositsEl = document.querySelector("#deposits");
 const withdrawalsEl = document.querySelector("#withdrawals");
 const chatMessagesEl = document.querySelector("#chatMessages");
+const gameLogsEl = document.querySelector("#gameLogs");
 
 adminKeyInput.value = localStorage.getItem("queenAdminKey") || "";
 
@@ -38,6 +39,8 @@ function render(data) {
     ["Bekleyen Yatırım", formatNumber(totals.pendingDeposits)],
     ["Bekleyen Çekim", formatNumber(totals.pendingWithdrawals)],
     ["House Profit", formatNumber(totals.houseProfit)],
+    ["Oyun Hacmi", formatNumber(totals.gameVolume)],
+    ["Oyun Sayısı", formatNumber(totals.games)],
   ].map(([label, value]) => `<article class="card"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></article>`).join("");
 
   playersCount.textContent = `${data.players.length} kayıt`;
@@ -53,6 +56,10 @@ function render(data) {
   renderItems(pendingWithdrawalsEl, data.pendingWithdrawals, (item) => `
     <div class="item"><strong>${escapeHtml(item.playerName)} <span class="pill">${formatNumber(item.amount)}</span></strong><small>${escapeHtml(item.targetPlayerName || item.targetPlayerId)} - ${formatDate(item.createdAt)}</small></div>
   `, "Bekleyen çekim yok.");
+
+  renderItems(gameLogsEl, data.gameLogs || [], (item) => `
+    <div class="item"><strong>${escapeHtml(item.game)} - ${escapeHtml(item.playerName || "Berabere")} <span class="pill">${formatNumber(item.profit)}</span></strong><small>Bahis ${formatNumber(item.bet)} - Ödeme ${formatNumber(item.payout)} - ${formatDate(item.createdAt)}</small></div>
+  `, "Oyun kaydı yok.");
 
   renderItems(depositsEl, data.deposits, (item) => `
     <div class="item"><strong>${escapeHtml(item.playerName)} <span class="pill">${formatNumber(item.amount)}</span></strong><small>${escapeHtml(item.status)} - gönderilen ${formatNumber(item.uniqueAmount)} - ${formatDate(item.createdAt)}</small></div>

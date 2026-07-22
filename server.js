@@ -13,10 +13,18 @@ const DATABASE_URL = process.env.DATABASE_URL || "";
 const DATABASE_SSL = process.env.DATABASE_SSL !== "false";
 const SYNC_INTERVAL_SECONDS = Math.max(10, Number(process.env.SYNC_INTERVAL_SECONDS) || 30);
 const AUTO_PAY_WITHDRAWALS = process.env.AUTO_PAY_WITHDRAWALS !== "false";
+const MIN_BET = Math.max(1, Number(process.env.MIN_BET) || 10);
+const MAX_BET = Math.max(MIN_BET, Number(process.env.MAX_BET) || 10000);
+const MIN_DEPOSIT = Math.max(1, Number(process.env.MIN_DEPOSIT) || 1000);
+const MAX_DEPOSIT = Math.max(MIN_DEPOSIT, Number(process.env.MAX_DEPOSIT) || 1000000);
+const DAILY_WITHDRAWAL_LIMIT = Math.max(0, Number(process.env.DAILY_WITHDRAWAL_LIMIT) || 1000000);
+const RATE_LIMIT_WINDOW_MS = Math.max(1000, Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000);
+const RATE_LIMIT_MAX = Math.max(10, Number(process.env.RATE_LIMIT_MAX) || 120);
 const DATA_DIR = path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 let dbInitPromise = null;
 let pgPool = null;
+const rateLimitBuckets = new Map();
 
 const symbols = ["🍒", "🍋", "⭐", "🔔", "💎", "7️⃣"];
 const rouletteRedNumbers = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
@@ -42,7 +50,7 @@ function loadEnvFile() {
 }
 
 function defaultDb() {
-  return { players: {}, deposits: [], withdrawals: [], processedTransfers: [], pvpGames: [], rpsGames: [], chatMessages: [], houseProfit: 0 };
+  return { players: {}, deposits: [], withdrawals: [], processedTransfers: [], pvpGames: [], rpsGames: [], chatMessages: [], gameLogs: [], houseProfit: 0 };
 }
 
 function normalizeDb(db) {
@@ -54,6 +62,7 @@ function normalizeDb(db) {
   if (!Array.isArray(normalized.pvpGames)) normalized.pvpGames = [];
   if (!Array.isArray(normalized.rpsGames)) normalized.rpsGames = [];
   if (!Array.isArray(normalized.chatMessages)) normalized.chatMessages = [];
+  if (!Array.isArray(normalized.gameLogs)) normalized.gameLogs = [];
   if (typeof normalized.houseProfit !== "number") normalized.houseProfit = 0;
   return normalized;
 }
@@ -130,6 +139,70 @@ function requireAdmin(req, res) {
 function sumBy(items, selector) {
   return items.reduce((total, item) => total + (Number(selector(item)) || 0), 0);
 }
+
+function getClientIp(req) {
+  return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+}
+
+function checkRateLimit(req, res) {
+  if (!req.url.startsWith("/api/")) return true;
+
+  const now = Date.now();
+  const key = `${getClientIp(req)}:${req.url.split("?")[0]}`;
+  const bucket = rateLimitBuckets.get(key) || { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
+
+  if (now > bucket.resetAt) {
+    bucket.count = 0;
+    bucket.resetAt = now + RATE_LIMIT_WINDOW_MS;
+  }
+
+  bucket.count += 1;
+  rateLimitBuckets.set(key, bucket);
+  if (bucket.count <= RATE_LIMIT_MAX) return true;
+
+  sendJson(res, 429, { error: "Çok fazla istek. Lütfen biraz bekle." });
+  return false;
+}
+
+function parseLimitedAmount(value, min, max, label) {
+  const amount = Math.floor(Number(value) || 0);
+  if (amount < min) return { error: `${label} minimum ${min} olmalı.` };
+  if (amount > max) return { error: `${label} maksimum ${max} olabilir.` };
+  return { amount };
+}
+
+function getTodayWithdrawalTotal(db, playerId) {
+  const today = new Date().toISOString().slice(0, 10);
+  return sumBy(
+    db.withdrawals.filter((item) => item.playerId === playerId && item.status !== "failed" && String(item.createdAt || "").startsWith(today)),
+    (item) => item.amount,
+  );
+}
+
+function appendGameLog(db, entry) {
+  db.gameLogs.push({ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...entry });
+  db.gameLogs = db.gameLogs.slice(-1000);
+}
+
+function logSinglePlayerGame(db, game, player, bet, payout, details = {}) {
+  appendGameLog(db, {
+    game,
+    playerId: player.id,
+    playerName: player.name,
+    bet,
+    payout,
+    profit: payout - bet,
+    balanceAfter: player.balance,
+    details,
+  });
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, bucket] of rateLimitBuckets.entries()) {
+    if (now > bucket.resetAt) rateLimitBuckets.delete(key);
+  }
+}, RATE_LIMIT_WINDOW_MS).unref?.();
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -325,6 +398,20 @@ function finishPvpGame(db, game) {
 
   game.status = "finished";
   game.finishedAt = new Date().toISOString();
+  if (!game.logId) {
+    game.logId = crypto.randomUUID();
+    appendGameLog(db, {
+      id: game.logId,
+      game: "Online 21",
+      bet: game.stake,
+      payout: winner ? payout : game.stake,
+      profit: winner ? payout - game.stake : 0,
+      playerId: winner?.id || null,
+      playerName: winner?.name || "Berabere",
+      players: game.players.map((seat) => ({ id: seat.id, name: seat.name, value: handValue(seat.hand) })),
+      details: { winnerId: game.winnerId || null, fee: game.fee || 0, message: game.message },
+    });
+  }
 }
 
 function applyPvpTimers(db, game) {
@@ -412,6 +499,20 @@ function finishRpsGame(db, game) {
 
   game.status = "finished";
   game.finishedAt = new Date().toISOString();
+  if (!game.logId) {
+    game.logId = crypto.randomUUID();
+    appendGameLog(db, {
+      id: game.logId,
+      game: "Taş Kağıt Makas",
+      bet: game.stake,
+      payout: winner ? game.payout : game.stake,
+      profit: winner ? game.payout - game.stake : 0,
+      playerId: winner?.id || null,
+      playerName: winner?.name || "Berabere",
+      players: game.players.map((seat) => ({ id: seat.id, name: seat.name, choice: seat.choice })),
+      details: { winnerId: game.winnerId || null, message: game.message },
+    });
+  }
 }
 
 function applyRpsTimers(db, game) {
@@ -493,6 +594,27 @@ function settleBlackjack(player, game) {
   player.balance += payout;
   game.status = "finished";
   game.payout = payout;
+}
+
+function logBlackjackGame(db, player, game) {
+  if (!game || game.status !== "finished" || game.logId) return;
+
+  game.logId = crypto.randomUUID();
+  appendGameLog(db, {
+    id: game.logId,
+    game: "21",
+    playerId: player.id,
+    playerName: player.name,
+    bet: game.bet,
+    payout: game.payout || 0,
+    profit: (game.payout || 0) - game.bet,
+    balanceAfter: player.balance,
+    details: {
+      playerValue: handValue(game.playerHand),
+      dealerValue: handValue(game.dealerHand),
+      message: game.message,
+    },
+  });
 }
 
 function createUniqueDepositAmount(db, amount) {
@@ -626,6 +748,9 @@ async function handleApi(req, res, pathname) {
         paidWithdrawalAmount: sumBy(paidWithdrawals, (item) => item.amount),
         pendingWithdrawals: pendingWithdrawals.length,
         houseProfit: db.houseProfit,
+        games: db.gameLogs.length,
+        gameVolume: sumBy(db.gameLogs, (item) => item.bet),
+        gameProfit: sumBy(db.gameLogs, (item) => -(item.profit || 0)),
       },
       players: players.slice(0, 100).map((player) => ({
         id: player.id,
@@ -638,6 +763,7 @@ async function handleApi(req, res, pathname) {
       withdrawals: db.withdrawals.slice(-100).reverse(),
       pendingWithdrawals: pendingWithdrawals.slice(-100).reverse(),
       chatMessages: db.chatMessages.slice(-100).reverse(),
+      gameLogs: db.gameLogs.slice(-100).reverse(),
     });
     return;
   }
@@ -701,7 +827,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const bet = Math.max(10, Math.floor(Number(body.bet) || 10));
+    const parsedBet = parseLimitedAmount(body.bet, MIN_BET, MAX_BET, "Bahis");
+    if (parsedBet.error) {
+      sendJson(res, 400, { error: parsedBet.error });
+      return;
+    }
+    const bet = parsedBet.amount;
     const db = await readDb();
     const player = getPlayer(db, user);
 
@@ -715,6 +846,7 @@ async function handleApi(req, res, pathname) {
     const multiplier = calculateMultiplier(result);
     const winAmount = bet * multiplier;
     player.balance += winAmount;
+    logSinglePlayerGame(db, "Slot", player, bet, winAmount, { result, multiplier });
     await writeDb(db);
 
     sendJson(res, 200, { result, multiplier, winAmount, balance: player.balance });
@@ -726,7 +858,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const bet = Math.max(10, Math.floor(Number(body.bet) || 10));
+    const parsedBet = parseLimitedAmount(body.bet, MIN_BET, MAX_BET, "Bahis");
+    if (parsedBet.error) {
+      sendJson(res, 400, { error: parsedBet.error });
+      return;
+    }
+    const bet = parsedBet.amount;
     const betType = String(body.betType || "red");
     const selectedNumber = Math.floor(Number(body.number));
     const db = await readDb();
@@ -761,6 +898,7 @@ async function handleApi(req, res, pathname) {
     const multiplier = betType === "number" ? 36 : 2;
     const payout = won ? bet * multiplier : 0;
     player.balance += payout;
+    logSinglePlayerGame(db, "Rulet", player, bet, payout, { number, color, betType, selectedNumber: betType === "number" ? selectedNumber : null });
     await writeDb(db);
 
     sendJson(res, 200, {
@@ -783,7 +921,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const bet = Math.max(10, Math.floor(Number(body.bet) || 10));
+    const parsedBet = parseLimitedAmount(body.bet, MIN_BET, MAX_BET, "Bahis");
+    if (parsedBet.error) {
+      sendJson(res, 400, { error: parsedBet.error });
+      return;
+    }
+    const bet = parsedBet.amount;
     const target = String(body.target || "over");
     const db = await readDb();
     const player = getPlayer(db, user);
@@ -805,6 +948,7 @@ async function handleApi(req, res, pathname) {
     const multiplier = target === "double" ? 5 : 1.8;
     const payout = won ? Math.floor(bet * multiplier) : 0;
     player.balance += payout;
+    logSinglePlayerGame(db, "Zar", player, bet, payout, { dice: [first, second], total, target, multiplier: won ? multiplier : 0 });
     await writeDb(db);
 
     sendJson(res, 200, {
@@ -825,7 +969,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const bet = Math.max(10, Math.floor(Number(body.bet) || 10));
+    const parsedBet = parseLimitedAmount(body.bet, MIN_BET, MAX_BET, "Bahis");
+    if (parsedBet.error) {
+      sendJson(res, 400, { error: parsedBet.error });
+      return;
+    }
+    const bet = parsedBet.amount;
     const db = await readDb();
     const player = getPlayer(db, user);
 
@@ -849,6 +998,7 @@ async function handleApi(req, res, pathname) {
     if (handValue(game.playerHand) === 21) {
       while (handValue(game.dealerHand) < 17) game.dealerHand.push(drawCard(game.deck));
       settleBlackjack(player, game);
+      logBlackjackGame(db, player, game);
     }
 
     player.blackjack = game;
@@ -874,6 +1024,7 @@ async function handleApi(req, res, pathname) {
     if (handValue(game.playerHand) >= 21) {
       while (handValue(game.dealerHand) < 17 && handValue(game.playerHand) <= 21) game.dealerHand.push(drawCard(game.deck));
       settleBlackjack(player, game);
+      logBlackjackGame(db, player, game);
     }
 
     await writeDb(db);
@@ -896,6 +1047,7 @@ async function handleApi(req, res, pathname) {
 
     while (handValue(game.dealerHand) < 17) game.dealerHand.push(drawCard(game.deck));
     settleBlackjack(player, game);
+    logBlackjackGame(db, player, game);
     await writeDb(db);
     sendJson(res, 200, { game: publicBlackjackGame(game, true), balance: player.balance });
     return;
@@ -906,7 +1058,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const stake = Math.max(100, Math.floor(Number(body.stake) || 100));
+    const parsedStake = parseLimitedAmount(body.stake, Math.max(100, MIN_BET), MAX_BET, "Bahis");
+    if (parsedStake.error) {
+      sendJson(res, 400, { error: parsedStake.error });
+      return;
+    }
+    const stake = parsedStake.amount;
     const db = await readDb();
     const player = getPlayer(db, user);
     const activeOnlineGame = getActiveOnlineGame(db, player.id);
@@ -1076,7 +1233,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const stake = Math.max(100, Math.floor(Number(body.stake) || 100));
+    const parsedStake = parseLimitedAmount(body.stake, Math.max(100, MIN_BET), MAX_BET, "Bahis");
+    if (parsedStake.error) {
+      sendJson(res, 400, { error: parsedStake.error });
+      return;
+    }
+    const stake = parsedStake.amount;
     const db = await readDb();
     const player = getPlayer(db, user);
     const activeOnlineGame = getActiveOnlineGame(db, player.id);
@@ -1217,11 +1379,12 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const amount = Math.floor(Number(body.amount) || 0);
-    if (amount < 1000) {
-      sendJson(res, 400, { error: "Minimum yatırım 1000 oyun parası." });
+    const parsedAmount = parseLimitedAmount(body.amount, MIN_DEPOSIT, MAX_DEPOSIT, "Yatırım");
+    if (parsedAmount.error) {
+      sendJson(res, 400, { error: parsedAmount.error });
       return;
     }
+    const amount = parsedAmount.amount;
 
     const db = await readDb();
     const player = getPlayer(db, user);
@@ -1248,11 +1411,16 @@ async function handleApi(req, res, pathname) {
     if (!user) return;
 
     const body = await readBody(req);
-    const amount = Math.floor(Number(body.amount) || 0);
+    const parsedAmount = parseLimitedAmount(body.amount, MIN_DEPOSIT, DAILY_WITHDRAWAL_LIMIT, "Çekim");
+    if (parsedAmount.error) {
+      sendJson(res, 400, { error: parsedAmount.error });
+      return;
+    }
+    const amount = parsedAmount.amount;
     const recipientId = String(body.recipientId || "").trim();
 
-    if (amount < 1000 || !recipientId) {
-      sendJson(res, 400, { error: "Tutar ve kayıtlı Diplomacia hesabı gerekli." });
+    if (!recipientId) {
+      sendJson(res, 400, { error: "Kayıtlı Diplomacia hesabı gerekli." });
       return;
     }
 
@@ -1266,6 +1434,12 @@ async function handleApi(req, res, pathname) {
 
     if (player.balance < amount) {
       sendJson(res, 400, { error: "Yetersiz bakiye." });
+      return;
+    }
+
+    const todayWithdrawals = getTodayWithdrawalTotal(db, player.id);
+    if (todayWithdrawals + amount > DAILY_WITHDRAWAL_LIMIT) {
+      sendJson(res, 400, { error: `Günlük çekim limiti ${DAILY_WITHDRAWAL_LIMIT}. Kalan limit: ${Math.max(0, DAILY_WITHDRAWAL_LIMIT - todayWithdrawals)}.` });
       return;
     }
 
@@ -1385,6 +1559,8 @@ function serveStatic(req, res, pathname) {
 
 const server = http.createServer(async (req, res) => {
   try {
+    if (!checkRateLimit(req, res)) return;
+
     const { pathname } = new URL(req.url, `http://${req.headers.host}`);
     if (pathname.startsWith("/api/")) {
       await handleApi(req, res, pathname);
