@@ -22,6 +22,9 @@ MAX_DEPOSIT=1000000
 DAILY_WITHDRAWAL_LIMIT=1000000
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=120
+CRASH_MIN_TARGET=1.5
+CRASH_MAX_TARGET=10
+CRASH_RETURN_RATE=0.82
 ```
 
 Sonra çalıştır:
@@ -73,7 +76,7 @@ Kontrol sıklığını `.env` içindeki `SYNC_INTERVAL_SECONDS` ile değiştireb
 
 ## Oyunlar
 
-Uygulamada slot, 21, online 21, taş kağıt makas, rulet, zar ve Crash oyunları bulunur. Crash oyununda oyuncu bahis ve hedef çarpanı seçer; roket hedef çarpana ulaşmadan patlarsa bahis kaybedilir, ulaşırsa hedef çarpan kadar ödeme yapılır.
+Uygulamada slot, 21, online 21, taş kağıt makas, rulet, zar ve Crash oyunları bulunur. Crash oyununda oyuncu bahis ve hedef çarpanı seçer; roket hedef çarpana ulaşmadan patlarsa bahis kaybedilir, ulaşırsa hedef çarpan kadar ödeme yapılır. Varsayılan Crash hedef aralığı `1.50x` - `10x`, teorik oyuncu dönüş oranı `CRASH_RETURN_RATE=0.82` değeridir.
 
 Admin senkronizasyon endpointi:
 
@@ -129,6 +132,9 @@ MAX_DEPOSIT=1000000
 DAILY_WITHDRAWAL_LIMIT=1000000
 RATE_LIMIT_WINDOW_MS=60000
 RATE_LIMIT_MAX=120
+CRASH_MIN_TARGET=1.5
+CRASH_MAX_TARGET=10
+CRASH_RETURN_RATE=0.82
 ```
 
 Sunucu her oyun sonucunu `gameLogs` içine kaydeder. Admin panelindeki `Son Oyunlar` bölümü son 100 kaydı gösterir, veritabanında en fazla son 1000 oyun kaydı tutulur.

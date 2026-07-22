@@ -20,6 +20,9 @@ const MAX_DEPOSIT = Math.max(MIN_DEPOSIT, Number(process.env.MAX_DEPOSIT) || 100
 const DAILY_WITHDRAWAL_LIMIT = Math.max(0, Number(process.env.DAILY_WITHDRAWAL_LIMIT) || 1000000);
 const RATE_LIMIT_WINDOW_MS = Math.max(1000, Number(process.env.RATE_LIMIT_WINDOW_MS) || 60000);
 const RATE_LIMIT_MAX = Math.max(10, Number(process.env.RATE_LIMIT_MAX) || 120);
+const CRASH_MIN_TARGET = Math.max(1.1, Number(process.env.CRASH_MIN_TARGET) || 1.5);
+const CRASH_MAX_TARGET = Math.max(CRASH_MIN_TARGET, Number(process.env.CRASH_MAX_TARGET) || 10);
+const CRASH_RETURN_RATE = Math.min(0.95, Math.max(0.5, Number(process.env.CRASH_RETURN_RATE) || 0.82));
 const DATA_DIR = path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 let dbInitPromise = null;
@@ -312,7 +315,7 @@ function pickResult() {
 
 function pickCrashMultiplier() {
   const roll = crypto.randomInt(1, 10001) / 10000;
-  const raw = 0.99 / Math.max(0.01, 1 - roll);
+  const raw = CRASH_RETURN_RATE / Math.max(0.01, 1 - roll);
   return Math.min(50, Math.max(1, Math.floor(raw * 100) / 100));
 }
 
@@ -982,7 +985,11 @@ async function handleApi(req, res, pathname) {
     }
 
     const bet = parsedBet.amount;
-    const targetMultiplier = Math.max(1.01, Math.min(25, Math.floor((Number(body.targetMultiplier) || 2) * 100) / 100));
+    const targetMultiplier = Math.floor((Number(body.targetMultiplier) || 2) * 100) / 100;
+    if (targetMultiplier < CRASH_MIN_TARGET || targetMultiplier > CRASH_MAX_TARGET) {
+      sendJson(res, 400, { error: `Crash hedefi ${CRASH_MIN_TARGET.toFixed(2)}x ile ${CRASH_MAX_TARGET.toFixed(2)}x arasında olmalı.` });
+      return;
+    }
     const db = await readDb();
     const player = getPlayer(db, user);
 

@@ -634,6 +634,13 @@ async function playDice() {
 }
 
 async function playCrash() {
+  const target = Number(crashTarget.value) || 0;
+  if (target < 1.5 || target > 10) {
+    crashMessage.textContent = "Crash hedefi 1.50x ile 10.00x arasında olmalı.";
+    crashMessage.className = "result-text lose";
+    return;
+  }
+
   crashPlay.disabled = true;
   crashStatus.textContent = "Uçuyor";
   crashMessage.textContent = "Roket kalkıyor...";
