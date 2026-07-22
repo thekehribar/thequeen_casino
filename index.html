@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Lucky Mini Casino</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero card">
+        <div>
+          <p class="eyebrow">Queen Casino</p>
+          <h1>Casino</h1>
+        </div>
+        <div class="balance-box">
+          <span>Bakiye</span>
+          <strong id="balance">1000</strong>
+        </div>
+      </section>
+
+      <section class="card player-card">
+        <div>
+          <span class="muted">Oyuncu</span>
+          <strong id="playerName">Misafir</strong>
+        </div>
+        <span id="statusBadge" class="badge">Hazır</span>
+      </section>
+
+      <nav class="tabs" aria-label="Uygulama menüsü">
+        <button class="tab-button active" data-tab="home">Ana Sayfa</button>
+        <button class="tab-button" data-tab="casino">Casino</button>
+        <button class="tab-button" data-tab="chat">Chat</button>
+        <button class="tab-button" data-tab="wallet">Bakiye</button>
+      </nav>
+
+      <section class="tab-panel active" data-panel="home">
+        <section class="home-card card">
+          <div class="home-actions">
+            <button class="quick-card" data-tab-target="casino"><span>🎰</span><strong>Casino</strong></button>
+            <button class="quick-card" data-tab-target="deposit"><span>➕</span><strong>Yatır</strong></button>
+            <button class="quick-card" data-tab-target="withdraw"><span>↗</span><strong>Çek</strong></button>
+          </div>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="casino">
+        <section class="casino-lobby card">
+          <div class="table-head">
+            <h2>Oyunlar</h2>
+            <span class="badge">Seç</span>
+          </div>
+          <div class="game-grid">
+            <button class="game-card active" data-game="slot"><span>🎰</span><strong>Slot</strong></button>
+            <button class="game-card" data-game="blackjack"><span>🂡</span><strong>21</strong></button>
+            <button class="game-card" data-game="pvp21"><span>🃏</span><strong>Online</strong></button>
+            <button class="game-card" data-game="rps"><span>✊</span><strong>TKM</strong></button>
+            <button class="game-card" data-game="roulette"><span>◉</span><strong>Rulet</strong></button>
+            <button class="game-card" data-game="dice"><span>🎲</span><strong>Zar</strong></button>
+          </div>
+        </section>
+
+        <section class="game-panel active" data-game-panel="slot">
+          <section class="slot-machine card" aria-label="Slot makinesi">
+            <div class="reels" id="reels">
+              <div class="reel">🍒</div>
+              <div class="reel">🍋</div>
+              <div class="reel">⭐</div>
+            </div>
+
+            <div class="bet-panel">
+              <label for="betAmount">Bahis</label>
+              <div class="bet-row">
+                <button class="chip" data-bet="25">25</button>
+                <button class="chip active" data-bet="50">50</button>
+                <button class="chip" data-bet="100">100</button>
+                <input id="betAmount" type="number" min="10" step="10" value="50" />
+              </div>
+            </div>
+
+            <button id="spinButton" class="primary-button">Çevir</button>
+            <p id="resultText" class="result-text">Hazır.</p>
+          </section>
+        </section>
+
+        <section class="game-panel" data-game-panel="blackjack">
+          <section class="blackjack-card card" aria-label="21 oyunu">
+            <div class="table-head">
+              <h2>21</h2>
+              <span id="blackjackStatus" class="badge">Hazır</span>
+            </div>
+
+            <div class="hand-block">
+              <div class="hand-title">
+                <span>Kasa</span>
+                <strong id="dealerValue">-</strong>
+              </div>
+              <div id="dealerHand" class="cards-row"></div>
+            </div>
+
+            <div class="hand-block">
+              <div class="hand-title">
+                <span>Sen</span>
+                <strong id="playerValue">-</strong>
+              </div>
+              <div id="playerHand" class="cards-row"></div>
+            </div>
+
+            <div class="bet-panel">
+              <label for="blackjackBet">Bahis</label>
+              <input id="blackjackBet" type="number" min="10" step="10" value="100" />
+            </div>
+
+            <div class="blackjack-actions">
+              <button id="blackjackStart" class="primary-button">Başla</button>
+              <button id="blackjackHit" class="secondary-button" disabled>Kart Çek</button>
+              <button id="blackjackStand" class="secondary-button" disabled>Dur</button>
+            </div>
+
+            <p id="blackjackMessage" class="result-text">Bahis seç ve başla.</p>
+          </section>
+        </section>
+
+        <section class="game-panel" data-game-panel="pvp21">
+          <section class="blackjack-card card" aria-label="Online 21 oyunu">
+            <div class="table-head">
+              <h2>Online 21</h2>
+              <span id="pvpStatus" class="badge">Hazır</span>
+            </div>
+
+            <label for="pvpStake">Bahis</label>
+            <input id="pvpStake" type="number" min="100" step="100" value="1000" />
+            <button id="pvpJoin" class="primary-button">Oda Kur / Eşleş</button>
+            <button id="pvpCancel" class="danger-button" disabled>Odayı Kapat</button>
+
+            <div id="pvpRoomState" class="room-state">Oda kur veya açık odalardan birine gir.</div>
+
+            <div class="room-list" id="pvpRooms"></div>
+
+            <div class="timer-box">
+              <span>Süre</span>
+              <strong id="pvpTimer">-</strong>
+            </div>
+
+            <div class="pvp-table">
+              <div class="hand-block">
+                <div class="hand-title">
+                  <span>Sen</span>
+                  <strong id="pvpSelfValue">-</strong>
+                </div>
+                <p class="player-balance">Bakiye: <strong id="pvpSelfBalance">0</strong></p>
+                <div id="pvpSelfHand" class="cards-row"></div>
+              </div>
+
+              <div class="hand-block">
+                <div class="hand-title">
+                  <span id="pvpOpponentName">Rakip</span>
+                  <strong id="pvpOpponentValue">-</strong>
+                </div>
+                <p class="player-balance">Bakiye: <strong id="pvpOpponentBalance">-</strong></p>
+                <div id="pvpOpponentHand" class="cards-row"></div>
+              </div>
+            </div>
+
+            <div class="blackjack-actions">
+              <button id="pvpHit" class="secondary-button" disabled>Kart Çek</button>
+              <button id="pvpStand" class="secondary-button" disabled>Dur</button>
+            </div>
+
+            <p id="pvpMessage" class="result-text">Bahis seç ve rakip ara.</p>
+          </section>
+        </section>
+
+        <section class="game-panel" data-game-panel="roulette">
+          <section class="roulette-card card" aria-label="Rulet">
+            <div class="table-head">
+              <h2>Rulet</h2>
+              <span id="rouletteStatus" class="badge">Hazır</span>
+            </div>
+
+            <div class="roulette-wheel" id="rouletteWheel">
+              <div class="roulette-ball"></div>
+              <div class="roulette-center" id="rouletteDial">?</div>
+            </div>
+
+            <div class="roulette-picks">
+              <button class="roulette-pick red active" data-roulette="red">Kırmızı</button>
+              <button class="roulette-pick black" data-roulette="black">Siyah</button>
+              <button class="roulette-pick" data-roulette="even">Çift</button>
+              <button class="roulette-pick" data-roulette="odd">Tek</button>
+              <button class="roulette-pick" data-roulette="number">Sayı</button>
+            </div>
+
+            <label for="rouletteNumber">Sayı</label>
+            <input id="rouletteNumber" type="number" min="0" max="36" step="1" value="7" disabled />
+
+            <label for="rouletteBet">Bahis</label>
+            <input id="rouletteBet" type="number" min="10" step="10" value="100" />
+            <button id="roulettePlay" class="primary-button">Oyna</button>
+            <p id="rouletteMessage" class="result-text">Kırmızı/siyah/tek/çift 2x, sayı 36x.</p>
+          </section>
+        </section>
+
+        <section class="game-panel" data-game-panel="rps">
+          <section class="blackjack-card card" aria-label="Online taş kağıt makas">
+            <div class="table-head">
+              <h2>Taş Kağıt Makas</h2>
+              <span id="rpsStatus" class="badge">Hazır</span>
+            </div>
+
+            <label for="rpsStake">Bahis</label>
+            <input id="rpsStake" type="number" min="100" step="100" value="1000" />
+            <button id="rpsJoin" class="primary-button">Oda Kur / Eşleş</button>
+            <button id="rpsCancel" class="danger-button" disabled>Odayı Kapat</button>
+
+            <div id="rpsRoomState" class="room-state">Oda kur veya açık odalardan birine gir.</div>
+
+            <div class="room-list" id="rpsRooms"></div>
+
+            <div class="timer-box">
+              <span>Süre</span>
+              <strong id="rpsTimer">-</strong>
+            </div>
+
+            <div class="rps-arena">
+              <div class="rps-player">
+                <span>Sen</span>
+                <strong id="rpsSelfChoice">?</strong>
+                <small>Bakiye: <b id="rpsSelfBalance">0</b></small>
+              </div>
+              <div class="rps-player">
+                <span id="rpsOpponentName">Rakip</span>
+                <strong id="rpsOpponentChoice">?</strong>
+                <small>Bakiye: <b id="rpsOpponentBalance">-</b></small>
+              </div>
+            </div>
+
+            <div class="rps-actions">
+              <button class="rps-choice" data-rps="rock">✊ Taş</button>
+              <button class="rps-choice" data-rps="paper">✋ Kağıt</button>
+              <button class="rps-choice" data-rps="scissors">✌ Makas</button>
+            </div>
+
+            <p id="rpsMessage" class="result-text">Bahis seç ve rakip ara.</p>
+          </section>
+        </section>
+
+        <section class="game-panel" data-game-panel="dice">
+          <section class="dice-card card" aria-label="Zar oyunu">
+            <div class="table-head">
+              <h2>Zar</h2>
+              <span id="diceStatus" class="badge">Hazır</span>
+            </div>
+            <div class="dice-stage">
+              <div id="diceOne" class="dice-face">⚀</div>
+              <div id="diceTwo" class="dice-face">⚁</div>
+            </div>
+            <div class="roulette-picks">
+              <button class="dice-pick active" data-dice="over">7 Üstü</button>
+              <button class="dice-pick" data-dice="under">7 Altı</button>
+              <button class="dice-pick" data-dice="double">Çift Zar</button>
+            </div>
+            <label for="diceBet">Bahis</label>
+            <input id="diceBet" type="number" min="10" step="10" value="100" />
+            <button id="dicePlay" class="primary-button">Zar At</button>
+            <p id="diceMessage" class="result-text">7 üstü/altı 1.8x, çift zar 5x.</p>
+          </section>
+        </section>
+      </section>
+
+      <section class="tab-panel" data-panel="deposit">
+        <div class="card cashier-card">
+          <h2>Para Yatır</h2>
+          <div class="account-banner">
+            <span>Gönderilecek hesap</span>
+            <strong>TheQueeN</strong>
+          </div>
+          <label for="depositAmount">Yüklenecek bakiye</label>
+          <input id="depositAmount" type="number" min="1000" step="1000" value="1000000" />
+          <button id="createDepositButton" class="secondary-button">Yatırım Kodu Al</button>
+          <div id="depositBox" class="notice hidden"></div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-panel="withdraw">
+        <div class="card cashier-card">
+          <h2>Para Çek</h2>
+          <label for="withdrawAmount">Çekilecek bakiye</label>
+          <input id="withdrawAmount" type="number" min="1000" step="1000" value="1000" />
+          <label for="withdrawAccount">Gönderilecek hesap</label>
+          <select id="withdrawAccount">
+            <option value="">Önce para yatırarak hesap bağla</option>
+          </select>
+          <button id="withdrawButton" class="secondary-button">Çekim Talebi Oluştur</button>
+          <div id="withdrawBox" class="notice hidden"></div>
+        </div>
+      </section>
+
+      <section class="tab-panel" data-panel="wallet">
+        <div class="card wallet-card">
+          <h2>Bakiye</h2>
+          <div class="wallet-total" id="walletBalance">0</div>
+          <div class="wallet-line">
+            <span>Oyuncu</span>
+            <strong id="walletPlayer">Misafir</strong>
+          </div>
+          <div class="wallet-line">
+            <span>Bağlı Hesap</span>
+            <strong id="linkedAccount">Yok</strong>
+          </div>
+        </div>
+
+      </section>
+
+      <section class="tab-panel" data-panel="chat">
+        <section class="chat-card card">
+          <div class="table-head">
+            <h2>Chat</h2>
+            <span class="badge">Canlı</span>
+          </div>
+          <div id="chatMessages" class="chat-messages"></div>
+          <form id="chatForm" class="chat-form">
+            <input id="chatInput" type="text" maxlength="240" placeholder="Mesaj yaz..." />
+            <button class="secondary-button" type="submit">Gönder</button>
+          </form>
+          <p id="chatStatus" class="result-text">Son mesajlar yükleniyor.</p>
+        </section>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
