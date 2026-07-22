@@ -119,6 +119,18 @@ function sendJson(res, status, body) {
   res.end(JSON.stringify(body));
 }
 
+function requireAdmin(req, res) {
+  if (!ADMIN_KEY || req.headers["x-admin-key"] !== ADMIN_KEY) {
+    sendJson(res, 401, { error: "Admin anahtarı hatalı." });
+    return false;
+  }
+  return true;
+}
+
+function sumBy(items, selector) {
+  return items.reduce((total, item) => total + (Number(selector(item)) || 0), 0);
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -593,6 +605,43 @@ function startDepositSyncLoop() {
 }
 
 async function handleApi(req, res, pathname) {
+  if (pathname === "/api/admin/summary" && req.method === "GET") {
+    if (!requireAdmin(req, res)) return;
+
+    const db = await readDb();
+    const players = Object.values(db.players).sort((a, b) => (b.balance || 0) - (a.balance || 0));
+    const creditedDeposits = db.deposits.filter((item) => item.status === "credited");
+    const pendingDeposits = db.deposits.filter((item) => item.status === "pending");
+    const paidWithdrawals = db.withdrawals.filter((item) => item.status === "paid");
+    const pendingWithdrawals = db.withdrawals.filter((item) => item.status === "pending");
+
+    sendJson(res, 200, {
+      totals: {
+        players: players.length,
+        totalBalance: sumBy(players, (player) => player.balance),
+        creditedDeposits: creditedDeposits.length,
+        creditedDepositAmount: sumBy(creditedDeposits, (item) => item.amount),
+        pendingDeposits: pendingDeposits.length,
+        paidWithdrawals: paidWithdrawals.length,
+        paidWithdrawalAmount: sumBy(paidWithdrawals, (item) => item.amount),
+        pendingWithdrawals: pendingWithdrawals.length,
+        houseProfit: db.houseProfit,
+      },
+      players: players.slice(0, 100).map((player) => ({
+        id: player.id,
+        name: player.name,
+        balance: player.balance,
+        accounts: player.diplomaciaAccounts || [],
+        createdAt: player.createdAt,
+      })),
+      deposits: db.deposits.slice(-100).reverse(),
+      withdrawals: db.withdrawals.slice(-100).reverse(),
+      pendingWithdrawals: pendingWithdrawals.slice(-100).reverse(),
+      chatMessages: db.chatMessages.slice(-100).reverse(),
+    });
+    return;
+  }
+
   if (pathname === "/api/me" && req.method === "GET") {
     const user = requireUser(req, res);
     if (!user) return;
@@ -1258,10 +1307,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/admin/sync-deposits" && req.method === "POST") {
-    if (!ADMIN_KEY || req.headers["x-admin-key"] !== ADMIN_KEY) {
-      sendJson(res, 401, { error: "Admin anahtarı hatalı." });
-      return;
-    }
+    if (!requireAdmin(req, res)) return;
 
     const credited = await syncDeposits();
     sendJson(res, 200, { credited });
@@ -1269,10 +1315,7 @@ async function handleApi(req, res, pathname) {
   }
 
   if (pathname === "/api/admin/withdrawals" && req.method === "GET") {
-    if (!ADMIN_KEY || req.headers["x-admin-key"] !== ADMIN_KEY) {
-      sendJson(res, 401, { error: "Admin anahtarı hatalı." });
-      return;
-    }
+    if (!requireAdmin(req, res)) return;
 
     const db = await readDb();
     sendJson(res, 200, { withdrawals: db.withdrawals.filter((item) => item.status === "pending") });
@@ -1281,10 +1324,7 @@ async function handleApi(req, res, pathname) {
 
   const payMatch = pathname.match(/^\/api\/admin\/withdrawals\/([^/]+)\/pay$/);
   if (payMatch && req.method === "POST") {
-    if (!ADMIN_KEY || req.headers["x-admin-key"] !== ADMIN_KEY) {
-      sendJson(res, 401, { error: "Admin anahtarı hatalı." });
-      return;
-    }
+    if (!requireAdmin(req, res)) return;
 
     const db = await readDb();
     const withdrawal = db.withdrawals.find((item) => item.id === payMatch[1]);

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Queen Casino Admin</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Queen Casino</p>
+          <h1>Admin Paneli</h1>
+          <p class="muted">Oyuncular, bakiyeler, yatırımlar, çekimler ve chat geçmişi.</p>
+        </div>
+        <form id="keyForm" class="key-form">
+          <input id="adminKey" type="password" placeholder="ADMIN_KEY" autocomplete="current-password" />
+          <button type="submit">Yenile</button>
+        </form>
+      </section>
+
+      <p id="status" class="status">Admin anahtarını gir.</p>
+
+      <section id="totals" class="cards"></section>
+
+      <section class="grid">
+        <article class="panel wide">
+          <div class="panel-head">
+            <h2>Oyuncular</h2>
+            <span id="playersCount"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Oyuncu</th><th>Bakiye</th><th>Diplomacia</th><th>ID</th></tr></thead>
+              <tbody id="playersBody"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><h2>Bekleyen Çekimler</h2></div>
+          <div id="pendingWithdrawals" class="list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><h2>Son Yatırımlar</h2></div>
+          <div id="deposits" class="list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><h2>Son Çekimler</h2></div>
+          <div id="withdrawals" class="list"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-head"><h2>Chat</h2></div>
+          <div id="chatMessages" class="list"></div>
+        </article>
+      </section>
+    </main>
+
+    <script src="admin.js"></script>
+  </body>
+</html>

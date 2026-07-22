@@ -90,8 +90,26 @@ Bekleyen çekimi Diplomacia `transfer/send` ile ödemek için:
 curl -X POST http://localhost:3000/api/admin/withdrawals/CEKIM_ID/pay -H "x-admin-key: ADMIN_KEY_BURAYA"
 ```
 
+## Admin Paneli
+
+Admin paneli canlı adreste `/admin.html` yolundadır:
+
+```text
+https://thequeen-casino.onrender.com/admin.html
+```
+
+Panel açılınca `.env` veya Render environment içinde tanımladığın `ADMIN_KEY` değerini gir. Panelde oyuncular, toplam bakiyeler, yatırımlar, çekimler, bekleyen çekimler ve son chat mesajları görüntülenir.
+
+Admin özet API'si:
+
+```bash
+curl http://localhost:3000/api/admin/summary -H "x-admin-key: ADMIN_KEY_BURAYA"
+```
+
 ## Önemli
 
 Bu proje gerçek para içermez. Yerelde bakiye `data/db.json` içinde, cloud ortamında `DATABASE_URL` verildiyse Postgres içinde tutulan oyun parasıdır.
 
 Paylaştığın Diplomacia `Bearer` token gizli bilgidir. Tokenı frontend koduna koyma, sadece `.env` içindeki `DIPLOMACIA_TOKEN` alanında tut. Token daha önce paylaşıldıysa yenilemen önerilir.
+
+`ADMIN_KEY` değerini herkese açık yerde paylaşma. Admin paneli bu anahtarla işlem geçmişi ve oyuncu bakiyelerini gösterir.

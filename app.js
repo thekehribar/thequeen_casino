@@ -130,20 +130,7 @@ function bootTelegram() {
     playerNameEl.textContent = user.first_name || user.username || "Telegram Oyuncusu";
   }
 
-  tg.MainButton.setText("ÇEVİR");
-  tg.MainButton.onClick(spin);
-  updateMainButton();
-}
-
-function updateMainButton() {
-  if (!tg) return;
-
-  if (state.spinning || state.balance < state.bet) {
-    tg.MainButton.hide();
-    return;
-  }
-
-  tg.MainButton.show();
+  tg.MainButton?.hide();
 }
 
 function updateUi() {
@@ -159,7 +146,7 @@ function updateUi() {
     chip.classList.toggle("active", Number(chip.dataset.bet) === state.bet);
   });
 
-  updateMainButton();
+  tg?.MainButton?.hide();
 }
 
 function openTab(tabName) {
