@@ -71,6 +71,10 @@ Not: Telegram Mini Apps HTTPS ister. Yerel test için ngrok veya Cloudflare Tunn
 
 Kontrol sıklığını `.env` içindeki `SYNC_INTERVAL_SECONDS` ile değiştirebilirsin. Minimum değer 10 saniyedir.
 
+## Oyunlar
+
+Uygulamada slot, 21, online 21, taş kağıt makas, rulet, zar ve Crash oyunları bulunur. Crash oyununda oyuncu bahis ve hedef çarpanı seçer; roket hedef çarpana ulaşmadan patlarsa bahis kaybedilir, ulaşırsa hedef çarpan kadar ödeme yapılır.
+
 Admin senkronizasyon endpointi:
 
 ```bash

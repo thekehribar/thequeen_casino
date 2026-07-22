@@ -310,6 +310,12 @@ function pickResult() {
   return [0, 1, 2].map(() => symbols[Math.floor(Math.random() * symbols.length)]);
 }
 
+function pickCrashMultiplier() {
+  const roll = crypto.randomInt(1, 10001) / 10000;
+  const raw = 0.99 / Math.max(0.01, 1 - roll);
+  return Math.min(50, Math.max(1, Math.floor(raw * 100) / 100));
+}
+
 function createDeck() {
   const deck = [];
   for (const suit of cardSuits) {
@@ -960,6 +966,47 @@ async function handleApi(req, res, pathname) {
       profit: payout - bet,
       balance: player.balance,
       message: won ? `Kazandın. Net +${payout - bet}` : "Kaybettin.",
+    });
+    return;
+  }
+
+  if (pathname === "/api/crash/play" && req.method === "POST") {
+    const user = requireUser(req, res);
+    if (!user) return;
+
+    const body = await readBody(req);
+    const parsedBet = parseLimitedAmount(body.bet, MIN_BET, MAX_BET, "Bahis");
+    if (parsedBet.error) {
+      sendJson(res, 400, { error: parsedBet.error });
+      return;
+    }
+
+    const bet = parsedBet.amount;
+    const targetMultiplier = Math.max(1.01, Math.min(25, Math.floor((Number(body.targetMultiplier) || 2) * 100) / 100));
+    const db = await readDb();
+    const player = getPlayer(db, user);
+
+    if (player.balance < bet) {
+      sendJson(res, 400, { error: "Yetersiz bakiye.", balance: player.balance });
+      return;
+    }
+
+    player.balance -= bet;
+    const crashAt = pickCrashMultiplier();
+    const won = crashAt >= targetMultiplier;
+    const payout = won ? Math.floor(bet * targetMultiplier) : 0;
+    player.balance += payout;
+    logSinglePlayerGame(db, "Crash", player, bet, payout, { crashAt, targetMultiplier, won });
+    await writeDb(db);
+
+    sendJson(res, 200, {
+      crashAt,
+      targetMultiplier,
+      won,
+      payout,
+      profit: payout - bet,
+      balance: player.balance,
+      message: won ? `${targetMultiplier.toFixed(2)}x'te kaçtın. Net +${payout - bet}` : `${crashAt.toFixed(2)}x'te patladı.`,
     });
     return;
   }

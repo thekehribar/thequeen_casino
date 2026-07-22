@@ -77,6 +77,14 @@ const diceOne = document.querySelector("#diceOne");
 const diceTwo = document.querySelector("#diceTwo");
 const dicePicks = [...document.querySelectorAll(".dice-pick")];
 let diceTarget = "over";
+const crashBet = document.querySelector("#crashBet");
+const crashTarget = document.querySelector("#crashTarget");
+const crashPlay = document.querySelector("#crashPlay");
+const crashStatus = document.querySelector("#crashStatus");
+const crashMessage = document.querySelector("#crashMessage");
+const crashStage = document.querySelector("#crashStage");
+const crashRocket = document.querySelector("#crashRocket");
+const crashMultiplier = document.querySelector("#crashMultiplier");
 const rpsStake = document.querySelector("#rpsStake");
 const rpsJoin = document.querySelector("#rpsJoin");
 const rpsCancel = document.querySelector("#rpsCancel");
@@ -625,6 +633,54 @@ async function playDice() {
   }
 }
 
+async function playCrash() {
+  crashPlay.disabled = true;
+  crashStatus.textContent = "Uçuyor";
+  crashMessage.textContent = "Roket kalkıyor...";
+  crashMessage.className = "result-text";
+  crashStage.classList.remove("win", "lose");
+  crashStage.classList.add("flying");
+  crashRocket.style.transform = "translate(0, 0) rotate(-20deg)";
+  crashMultiplier.textContent = "1.00x";
+
+  try {
+    const data = await apiRequest("/api/crash/play", {
+      method: "POST",
+      body: JSON.stringify({ bet: crashBet.value, targetMultiplier: crashTarget.value }),
+    });
+
+    const finalMultiplier = data.won ? data.targetMultiplier : data.crashAt;
+    const startedAt = performance.now();
+    await new Promise((resolve) => {
+      const animate = (now) => {
+        const progress = Math.min(1, (now - startedAt) / 1100);
+        const current = 1 + (finalMultiplier - 1) * progress;
+        crashMultiplier.textContent = `${current.toFixed(2)}x`;
+        crashRocket.style.transform = `translate(${progress * 150}px, ${progress * -92}px) rotate(${-20 + progress * 34}deg)`;
+        if (progress < 1) requestAnimationFrame(animate);
+        else resolve();
+      };
+      requestAnimationFrame(animate);
+    });
+
+    state.balance = data.balance;
+    crashMultiplier.textContent = `${finalMultiplier.toFixed(2)}x`;
+    crashStage.classList.toggle("win", data.won);
+    crashStage.classList.toggle("lose", !data.won);
+    crashMessage.textContent = data.message;
+    crashMessage.className = data.won ? "result-text win" : "result-text lose";
+    crashStatus.textContent = data.won ? "Kazandı" : "Patladı";
+    updateUi();
+  } catch (error) {
+    crashMessage.textContent = error.message;
+    crashMessage.className = "result-text lose";
+    crashStatus.textContent = "Hata";
+  } finally {
+    crashStage.classList.remove("flying");
+    crashPlay.disabled = false;
+  }
+}
+
 async function loadPvpRooms() {
   const data = await apiRequest("/api/pvp21/rooms", { method: "GET" });
   state.balance = data.balance;
@@ -727,6 +783,7 @@ roulettePicks.forEach((button) => {
   button.addEventListener("click", () => setRouletteBetType(button.dataset.roulette));
 });
 dicePlay.addEventListener("click", playDice);
+crashPlay.addEventListener("click", playCrash);
 dicePicks.forEach((button) => {
   button.addEventListener("click", () => setDiceTarget(button.dataset.dice));
 });

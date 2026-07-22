@@ -1,12 +1,14 @@
 :root {
   color-scheme: dark;
-  --bg: #11121a;
+  --bg: #080811;
   --card: rgba(255, 255, 255, 0.08);
   --card-border: rgba(255, 255, 255, 0.12);
   --text: #f7f2ff;
   --muted: #b8adcc;
   --accent: #f7b733;
   --accent-2: #fc4a1a;
+  --royal: #8b5cf6;
+  --cyan: #22d3ee;
   --good: #48d597;
   --bad: #ff6871;
 }
@@ -21,9 +23,20 @@ body {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at top left, rgba(247, 183, 51, 0.28), transparent 34rem),
-    radial-gradient(circle at bottom right, rgba(252, 74, 26, 0.2), transparent 28rem),
+    radial-gradient(circle at top left, rgba(247, 183, 51, 0.25), transparent 31rem),
+    radial-gradient(circle at 85% 12%, rgba(139, 92, 246, 0.26), transparent 24rem),
+    radial-gradient(circle at bottom right, rgba(34, 211, 238, 0.14), transparent 28rem),
     var(--bg);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.8), transparent 78%);
 }
 
 button,
@@ -44,11 +57,26 @@ select {
 }
 
 .card {
+  position: relative;
+  overflow: hidden;
   border: 1px solid var(--card-border);
   border-radius: 26px;
-  background: var(--card);
+  background: linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.045));
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,255,255,.16), transparent 38%);
+  opacity: .45;
+}
+
+.card > * {
+  position: relative;
 }
 
 .hero {
@@ -57,6 +85,9 @@ select {
   justify-content: space-between;
   gap: 16px;
   padding: 22px;
+  background:
+    linear-gradient(135deg, rgba(247, 183, 51, 0.18), rgba(139, 92, 246, 0.12)),
+    linear-gradient(145deg, rgba(255,255,255,.11), rgba(255,255,255,.045));
 }
 
 .eyebrow,
@@ -80,6 +111,7 @@ h1 {
   text-align: right;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #201006;
+  box-shadow: 0 12px 32px rgba(247, 183, 51, .26);
 }
 
 .balance-box span {
@@ -188,6 +220,16 @@ h1 {
   padding: 14px;
 }
 
+.quick-card:hover,
+.game-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(247, 183, 51, 0.45);
+}
+
+.game-card.hot {
+  background: radial-gradient(circle at top right, rgba(34,211,238,.2), transparent 48%), linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.05));
+}
+
 .quick-card {
   min-height: 108px;
 }
@@ -239,14 +281,16 @@ h1 {
 
 .blackjack-card,
 .roulette-card,
-.dice-card {
+.dice-card,
+.crash-card {
   margin-top: 14px;
   padding: 18px;
 }
 
 .blackjack-card label,
 .roulette-card label,
-.dice-card label {
+.dice-card label,
+.crash-card label {
   display: block;
   margin: 14px 0 8px;
   color: var(--muted);
@@ -256,13 +300,82 @@ h1 {
 
 .blackjack-card input,
 .roulette-card input,
-.dice-card input {
+.dice-card input,
+.crash-card input {
   min-height: 46px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.08);
   color: var(--text);
   padding: 0 14px;
+}
+
+.crash-stage {
+  position: relative;
+  display: grid;
+  min-height: 220px;
+  align-items: end;
+  margin: 18px 0;
+  padding: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 24% 80%, rgba(247,183,51,.2), transparent 30%),
+    radial-gradient(circle at 82% 20%, rgba(34,211,238,.18), transparent 34%),
+    linear-gradient(180deg, rgba(8,8,17,.72), rgba(8,8,17,.32));
+}
+
+.crash-grid-lines {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255,255,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+  transform: skewY(-10deg);
+  opacity: .55;
+}
+
+.crash-rocket {
+  position: absolute;
+  left: 28px;
+  bottom: 28px;
+  font-size: 48px;
+  filter: drop-shadow(0 0 18px rgba(247, 183, 51, .72));
+  transition: transform .18s ease;
+}
+
+.crash-stage.flying .crash-rocket {
+  animation: rocket-shake .18s linear infinite;
+}
+
+.crash-stage strong {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  align-self: start;
+  font-size: clamp(42px, 14vw, 74px);
+  letter-spacing: -0.08em;
+  text-shadow: 0 0 24px rgba(34,211,238,.35);
+}
+
+.crash-stage.win {
+  border-color: rgba(72, 213, 151, .7);
+  box-shadow: inset 0 0 48px rgba(72, 213, 151, .16), 0 20px 60px rgba(72,213,151,.12);
+}
+
+.crash-stage.lose {
+  border-color: rgba(255, 104, 113, .7);
+  box-shadow: inset 0 0 48px rgba(255, 104, 113, .18), 0 20px 60px rgba(255,104,113,.12);
+}
+
+.crash-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+@keyframes rocket-shake {
+  50% { margin-left: 2px; margin-bottom: -1px; }
 }
 
 .dice-stage {
@@ -1005,6 +1118,7 @@ h1 {
   .blackjack-card,
   .roulette-card,
   .dice-card,
+  .crash-card,
   .cashier-card,
   .wallet-card,
   .chat-card {
@@ -1077,6 +1191,14 @@ h1 {
     font-size: 58px;
   }
 
+  .crash-stage {
+    min-height: 190px;
+  }
+
+  .crash-rocket {
+    font-size: 42px;
+  }
+
   .rps-player {
     min-height: 128px;
     padding: 10px;
@@ -1131,6 +1253,10 @@ h1 {
 
   .dice-stage,
   .rps-arena {
+    grid-template-columns: 1fr;
+  }
+
+  .crash-inputs {
     grid-template-columns: 1fr;
   }
 
